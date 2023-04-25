@@ -12,19 +12,13 @@ public class CrackHashManagerController : ControllerBase
 {
     private readonly CrackHashManager _crackHashManager;
     private readonly MessageService<CrackHashWorkerResponseDto> _messageService;
-    private readonly IOptions<AppSettings> _appSettings;
 
     public CrackHashManagerController(
         CrackHashManager crackHashManager,
-        MessageService<CrackHashWorkerResponseDto> messageService,
-        IOptions<AppSettings> appSettings)
+        MessageService<CrackHashWorkerResponseDto> messageService)
     {
         _crackHashManager = crackHashManager;
         _messageService = messageService;
-        _appSettings = appSettings;
-
-        var httpClientHandler = new HttpClientHandler();
-        httpClientHandler.ServerCertificateCustomValidationCallback = (_, _, _, _) => true;
     }
 
     [HttpPost("/api/hash/crack")]

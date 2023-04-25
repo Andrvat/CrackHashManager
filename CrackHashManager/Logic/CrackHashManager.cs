@@ -13,20 +13,13 @@ public class CrackHashManager
 {
     private ConcurrentDictionary<string, RequestProcessingStatus> ClientRequestProcessingStatuses { get; set; } = new ();
     private ConcurrentDictionary<(string ClientRequestId, int WorkerId), RequestProcessingStatus> WorkerClientTaskProcessingStatuses { get; set; } = new();
-
     private ConcurrentDictionary<string, List<string>> ClientCrackHashWords { get; set; } = new ();
 
-    private readonly IOptions<AppSettings> _appSettings;
     private readonly IBus _bus;
 
-    private HttpClient _httpClient;
-    
-    public CrackHashManager(IBus bus, IOptions<AppSettings> appSettings)
+    public CrackHashManager(IBus bus)
     {
         _bus = bus;
-        _appSettings = appSettings;
-        
-        UpdateActiveHttpClient(null);
     }
 
     public async Task<IActionResult> SendTasksToWorkers(string requestId, int totalWorkersNumber,
@@ -36,7 +29,6 @@ public class CrackHashManager
 
         var alphabet = Environment.GetEnvironmentVariable("CRACK_HASH_ALPHABET")!;
 
-        var workerInitialPort =int.Parse(Environment.GetEnvironmentVariable("WORKER_INITIAL_PORT")!);
         for (var i = 1; i <= totalWorkersNumber; i++)
         {
             Console.WriteLine($"Sends message with guid {requestId} to {i}-worker via RabbitMq: {_bus.Address}");
@@ -50,12 +42,6 @@ public class CrackHashManager
                 Alphabet = new Alphabet(alphabet.ToCharArray())
             });
 
-            UpdateActiveHttpClient(workerInitialPort);
-            workerInitialPort += 1;
-            var workerPath = "/internal/api/worker/hash/crack/task";
-            Console.WriteLine($"Send message to {i}-worker via HTTP by path: {workerPath}. Base addr: {_httpClient.BaseAddress}"); 
-            _httpClient.PostAsync(workerPath, null);
-            
             WorkerClientTaskProcessingStatuses[(requestId, i)] = RequestProcessingStatus.InProgress;
         }
 
@@ -128,17 +114,6 @@ public class CrackHashManager
         else
         {
             ClientCrackHashWords.AddOrUpdate(requestId, words, (_, value) => value);
-        }
-    }
-
-    private void UpdateActiveHttpClient(int? workerInitialPort)
-    {
-        var httpClientHandler = new HttpClientHandler();
-        httpClientHandler.ServerCertificateCustomValidationCallback = (_, _, _, _) => true;
-        _httpClient = new HttpClient(httpClientHandler);
-        if (workerInitialPort.HasValue)
-        {
-            _httpClient.BaseAddress = new Uri($"http://worker:{workerInitialPort}/");
         }
     }
 }
