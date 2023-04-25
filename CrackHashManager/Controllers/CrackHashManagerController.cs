@@ -56,7 +56,7 @@ public class CrackHashManagerController : ControllerBase
     {
         Console.WriteLine($"Handle response from worker by path: {Request.Path}");
 
-        var workerResponse = _messageService.AwaitMessage().Result;
+        var workerResponse = _messageService.GetMessage();
         Console.WriteLine($"Get worker response {workerResponse}");
 
         _crackHashManager.AddCrackedHashWords(workerResponse);

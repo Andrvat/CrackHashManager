@@ -1,25 +1,19 @@
-﻿namespace DataContracts.MassTransit;
+﻿using System.Collections.Concurrent;
+
+namespace DataContracts.MassTransit;
 
 public class MessageService<T>
 {
-    private T? _message;
-    private TaskCompletionSource<T>? _tcs;
+    private readonly BlockingCollection<T> _messages = new ();
 
-    public void NextMessage(T message)
+    public void AddMessage(T message)
     {
-        _message = message;
-        _tcs?.SetResult(message);
-        _tcs = null;
+        _messages.Add(message);
     }
-
-    public async Task<T> AwaitMessage()
-    {
-        if (_message != null)
-        {
-            return _message;
-        }
-
-        _tcs = new TaskCompletionSource<T>();
-        return await _tcs.Task;
+    
+    public T GetMessage()
+    { 
+        var message = _messages.Take(); 
+        return message;
     }
 }

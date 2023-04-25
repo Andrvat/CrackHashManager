@@ -19,7 +19,7 @@ public class TaskFinishedConsumer : IConsumer<ITaskFinished>
     {
         var message = context.Message;
         var workerResponse = MapperConfig.GetAutomapperInstance().Map<CrackHashWorkerResponseDto>(message);
-        _messageService.NextMessage(workerResponse);
+        _messageService.AddMessage(workerResponse);
         return Task.CompletedTask;
     }
 }

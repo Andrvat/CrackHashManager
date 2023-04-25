@@ -53,8 +53,8 @@ public class CrackHashManager
             UpdateActiveHttpClient(workerInitialPort);
             workerInitialPort += 1;
             var workerPath = "/internal/api/worker/hash/crack/task";
-            Console.WriteLine($"Send message to {i}-worker via HTTP by path: {workerPath}. Base addr: {_httpClient.BaseAddress}");
-            await _httpClient.PostAsync(workerPath, null);
+            Console.WriteLine($"Send message to {i}-worker via HTTP by path: {workerPath}. Base addr: {_httpClient.BaseAddress}"); 
+            _httpClient.PostAsync(workerPath, null);
             
             WorkerClientTaskProcessingStatuses[(requestId, i)] = RequestProcessingStatus.InProgress;
         }
