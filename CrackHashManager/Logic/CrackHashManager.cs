@@ -11,9 +11,12 @@ namespace Manager.Logic;
 
 public class CrackHashManager
 {
-    private ConcurrentDictionary<string, RequestProcessingStatus> ClientRequestProcessingStatuses { get; set; } = new ();
-    private ConcurrentDictionary<(string ClientRequestId, int WorkerId), RequestProcessingStatus> WorkerClientTaskProcessingStatuses { get; set; } = new();
-    private ConcurrentDictionary<string, List<string>> ClientCrackHashWords { get; set; } = new ();
+    private ConcurrentDictionary<string, RequestProcessingStatus> ClientRequestProcessingStatuses { get; set; } = new();
+
+    private ConcurrentDictionary<(string ClientRequestId, int WorkerId), RequestProcessingStatus>
+        WorkerClientTaskProcessingStatuses { get; set; } = new();
+
+    private ConcurrentDictionary<string, List<string>> ClientCrackHashWords { get; set; } = new();
 
     private readonly IBus _bus;
 
@@ -77,25 +80,26 @@ public class CrackHashManager
         }
     }
 
-    public CrackResultDto GetCrackHashResult(string requestId)
+    public CrackResultDto? GetCrackHashResult(string requestId)
     {
+        if (!ClientRequestProcessingStatuses.ContainsKey(requestId))
+        {
+            return null;
+        }
+
         var clientRequestProcessingResult = ClientRequestProcessingStatuses
             .FirstOrDefault(r => r.Key.Equals(requestId));
 
-        return clientRequestProcessingResult.Value == RequestProcessingStatus.InProgress
-            ? new CrackResultDto
-            {
-                Status = RequestProcessingStatus.InProgress,
-                Data = null
-            }
-            : new CrackResultDto
-            {
-                Status = clientRequestProcessingResult.Value,
-                Data = ClientCrackHashWords[requestId]
-            };
+        return new CrackResultDto
+        {
+            Status = clientRequestProcessingResult.Value,
+            Data = clientRequestProcessingResult.Value == RequestProcessingStatus.Ready
+                ? ClientCrackHashWords[requestId]
+                : null
+        };
     }
 
-    private void SetClientRequestProcessingStatus(string requestId, RequestProcessingStatus status)
+    public void SetClientRequestProcessingStatus(string requestId, RequestProcessingStatus status)
     {
         ClientRequestProcessingStatuses.AddOrUpdate(requestId, status, (_, _) => status);
     }
@@ -104,7 +108,7 @@ public class CrackHashManager
     {
         WorkerClientTaskProcessingStatuses.AddOrUpdate((requestId, workerId), status, (_, _) => status);
     }
-    
+
     private void SetClientRequestWords(string requestId, List<string> words)
     {
         var success = ClientCrackHashWords.TryAdd(requestId, words);
