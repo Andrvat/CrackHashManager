@@ -1,0 +1,11 @@
+<crac:CrackHashManagerRequest xmlns:crac="http://ccfit.nsu.ru/schema/crack-hash-request">
+  <crac:RequestId>string</crac:RequestId>
+  <crac:PartNumber>3</crac:PartNumber>
+  <crac:PartCount>3</crac:PartCount>
+  <crac:Hash>string</crac:Hash>
+  <crac:MaxLength>3</crac:MaxLength>
+  <crac:Alphabet>
+    <!--Zero or more repetitions:-->
+    <crac:symbols>string</crac:symbols>
+  </crac:Alphabet>
+</crac:CrackHashManagerRequest>
