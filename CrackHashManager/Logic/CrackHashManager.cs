@@ -107,13 +107,12 @@ public class CrackHashManager
     
     private void SetClientRequestWords(string requestId, List<string> words)
     {
-        if (ClientCrackHashWords.TryGetValue(requestId, out List<string> value))
+        var success = ClientCrackHashWords.TryAdd(requestId, words);
+        if (!success)
         {
-            value.AddRange(words);
-        }
-        else
-        {
-            ClientCrackHashWords.AddOrUpdate(requestId, words, (_, value) => value);
+            ClientCrackHashWords.TryRemove(requestId, out var currentWords);
+            currentWords!.AddRange(words);
+            ClientCrackHashWords.TryAdd(requestId, currentWords);
         }
     }
 }
