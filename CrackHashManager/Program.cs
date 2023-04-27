@@ -10,10 +10,10 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.Configure<AppSettings>(builder.Configuration.GetSection(nameof(AppSettings)));
 
 builder.Services.AddScoped<ICrackHashDbContext, CrackHashDbContext>();
-builder.Services.AddSingleton<IMongoDbConfig, MongoDbConfig>();
-builder.Services.AddSingleton<ICrackHashService, CrackHashService>();
+builder.Services.AddScoped<IMongoDbConfig, MongoDbConfig>();
+builder.Services.AddScoped<ICrackHashService, CrackHashService>();
 
-builder.Services.AddSingleton<CrackHashManager>();
+builder.Services.AddScoped<CrackHashManager>();
 builder.Services.AddScoped<TaskFinishedConsumer>();
 builder.Services.AddSingleton<MessageService<CrackHashWorkerResponseDto>>();
 

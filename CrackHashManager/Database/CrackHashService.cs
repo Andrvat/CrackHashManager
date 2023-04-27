@@ -53,7 +53,7 @@ public class CrackHashService : ICrackHashService
         {
             requestResultInfo.Data.AddRange(data);
             var filterDefinition = Builders<CrackHashRequestResultEntity>.Filter.Eq(e => e.RequestId, requestId);
-            var updateDefinition = Builders<CrackHashRequestResultEntity>.Update.Set<List<string>>(e => e.Data, data);
+            var updateDefinition = Builders<CrackHashRequestResultEntity>.Update.Set<List<string>>(e => e.Data, requestResultInfo.Data);
             var options = new UpdateOptions
             {
                 IsUpsert = true
