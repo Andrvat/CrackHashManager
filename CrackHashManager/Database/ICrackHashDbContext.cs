@@ -6,5 +6,5 @@ namespace Manager.Database;
 public interface ICrackHashDbContext
 {
     IMongoCollection<CrackHashRequestResultEntity> RequestResults { get; }
-    IMongoCollection<CrackHashWorkerRequestProcessingStatusEntity> WorkerRequestProcessingStatuses { get; }
+    IMongoCollection<CrackHashWorkerTaskEntity> WorkerTasks { get; }
 }

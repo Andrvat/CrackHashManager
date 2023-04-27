@@ -8,7 +8,7 @@ public class CrackHashDbContext : ICrackHashDbContext
     private readonly IMongoDatabase _db;
 
     public IMongoCollection<CrackHashRequestResultEntity> RequestResults => _db.GetCollection<CrackHashRequestResultEntity>("RequestResults");
-    public IMongoCollection<CrackHashWorkerRequestProcessingStatusEntity> WorkerRequestProcessingStatuses => _db.GetCollection<CrackHashWorkerRequestProcessingStatusEntity>("WorkerRequestProcessingStatuses");
+    public IMongoCollection<CrackHashWorkerTaskEntity> WorkerTasks => _db.GetCollection<CrackHashWorkerTaskEntity>("WorkerTasks");
 
     public CrackHashDbContext(IMongoDbConfig config)
     {

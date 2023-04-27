@@ -51,7 +51,14 @@ public class CrackHashService : ICrackHashService
         
         if (requestResultInfo != null)
         {
-            requestResultInfo.Data.AddRange(data);
+            data.ForEach(d =>
+            {
+                if (!requestResultInfo.Data.Contains(d))
+                {
+                    requestResultInfo.Data.Add(d);
+                }
+            });
+            
             var filterDefinition = Builders<CrackHashRequestResultEntity>.Filter.Eq(e => e.RequestId, requestId);
             var updateDefinition = Builders<CrackHashRequestResultEntity>.Update.Set<List<string>>(e => e.Data, requestResultInfo.Data);
             var options = new UpdateOptions
@@ -63,27 +70,27 @@ public class CrackHashService : ICrackHashService
         }
     }
 
-    public async Task AddOrUpdateWorkerRequestProcessingStatus(CrackHashWorkerRequestProcessingStatusEntity entity)
+    public async Task AddOrUpdateWorkerRequestProcessingStatus(CrackHashWorkerTaskEntity entity)
     {
-        var filterDefinition = Builders<CrackHashWorkerRequestProcessingStatusEntity>.Filter.And(
-            new List<FilterDefinition<CrackHashWorkerRequestProcessingStatusEntity>>
+        var filterDefinition = Builders<CrackHashWorkerTaskEntity>.Filter.And(
+            new List<FilterDefinition<CrackHashWorkerTaskEntity>>
             {
-                Builders<CrackHashWorkerRequestProcessingStatusEntity>.Filter.Eq<string>(e => e.RequestId, entity.RequestId),
-                Builders<CrackHashWorkerRequestProcessingStatusEntity>.Filter.Eq<int>(e => e.WorkerId, entity.WorkerId)
+                Builders<CrackHashWorkerTaskEntity>.Filter.Eq<string>(e => e.RequestId, entity.RequestId),
+                Builders<CrackHashWorkerTaskEntity>.Filter.Eq<int>(e => e.WorkerId, entity.WorkerId)
             });
-        var updateDefinition = Builders<CrackHashWorkerRequestProcessingStatusEntity>.Update.Set(e => e.Status, entity.Status);
+        var updateDefinition = Builders<CrackHashWorkerTaskEntity>.Update.Set(e => e.Status, entity.Status);
         var options = new UpdateOptions
         {
             IsUpsert = true
         };
 
-        await _dbContext.WorkerRequestProcessingStatuses.UpdateOneAsync(filterDefinition, updateDefinition, options);
+        await _dbContext.WorkerTasks.UpdateOneAsync(filterDefinition, updateDefinition, options);
     }
 
-    public async Task<List<CrackHashWorkerRequestProcessingStatusEntity>> GetWorkerRequestProcessingStatusesByRequestId(string requestId)
+    public async Task<List<CrackHashWorkerTaskEntity>> GetWorkerRequestProcessingStatusesByRequestId(string requestId)
     {
-        var filterDefinition = Builders<CrackHashWorkerRequestProcessingStatusEntity>.Filter.Eq(e => e.RequestId, requestId);
-        var result = await _dbContext.WorkerRequestProcessingStatuses.FindAsync(filterDefinition);
+        var filterDefinition = Builders<CrackHashWorkerTaskEntity>.Filter.Eq(e => e.RequestId, requestId);
+        var result = await _dbContext.WorkerTasks.FindAsync(filterDefinition);
         return result.ToList();
     }
 }

@@ -24,14 +24,11 @@ public class CrackHashManagerController : ControllerBase
     public async Task<RequestInfoDto> RunCrackHash([FromBody] UserDataDto userDataDto)
     {
         Console.WriteLine($"Handle request to run crack hash from user by path: {Request.Path}");
-        var totalWorkersNumber = int.Parse(Environment.GetEnvironmentVariable("WORKERS_NUMBER")!);
         var requestInfoDto = new RequestInfoDto();
         requestInfoDto.SetRandomGuid();
         Console.WriteLine($"Generate new Guid to user request: {requestInfoDto.RequestId}");
 
-        Console.WriteLine($"Send tasks to {totalWorkersNumber} workers");
-
-        await _crackHashManager.SendTasksToWorkers(requestInfoDto.RequestId, totalWorkersNumber, userDataDto);
+        await _crackHashManager.SendTasksToWorkers(requestInfoDto.RequestId, userDataDto);
 
         SetRequestProcessingTimeout(requestInfoDto);
 
