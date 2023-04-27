@@ -1,3 +1,5 @@
+namespace Manager.Utilities;
+
 public static class RetryHelper
 {
     public static async Task RetryOnExceptionAsync(int times, TimeSpan delay, Func<Task> operation)

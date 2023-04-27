@@ -3,6 +3,7 @@ using DataContracts.Enum;
 using DataContracts.MassTransit;
 using Manager.Database;
 using Manager.DataContracts.Entities;
+using Manager.Utilities;
 using MassTransit;
 using Microsoft.AspNetCore.Mvc;
 
