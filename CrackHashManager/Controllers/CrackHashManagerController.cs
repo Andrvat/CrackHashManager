@@ -28,7 +28,7 @@ public class CrackHashManagerController : ControllerBase
         requestInfoDto.SetRandomGuid();
         Console.WriteLine($"Generate new Guid to user request: {requestInfoDto.RequestId}");
 
-        await _crackHashManager.SendTasksToWorkers(requestInfoDto.RequestId, userDataDto);
+        _crackHashManager.SendTasksToWorkers(requestInfoDto.RequestId, userDataDto);
 
         SetRequestProcessingTimeout(requestInfoDto);
 

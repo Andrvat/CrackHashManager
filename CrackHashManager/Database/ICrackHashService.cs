@@ -9,6 +9,6 @@ public interface ICrackHashService
     Task AddOrUpdateRequestInfo(CrackHashRequestResultEntity entity);
     Task UpdateRequestProcessingStatus(string requestId, RequestProcessingStatus status);
     Task UpdateRequestData(string requestId, List<string> data);
-    Task AddOrUpdateWorkerRequestProcessingStatus(CrackHashWorkerTaskEntity entity);
-    Task<List<CrackHashWorkerTaskEntity>> GetWorkerRequestProcessingStatusesByRequestId(string requestId);
+    Task AddOrUpdateWorkerTask(CrackHashWorkerTaskEntity entity);
+    Task<List<CrackHashWorkerTaskEntity>> GetWorkerTasksByRequestId(string requestId);
 }

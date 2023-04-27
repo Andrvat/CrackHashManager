@@ -42,7 +42,15 @@ public class CrackHashManager
                 MaxLength = userDataDto.MaxLength,
                 Status = RequestProcessingStatus.InProgress
             };
-            await SendTaskToWorker(workerTaskEntity);
+
+            try
+            {
+                await SendTaskToWorker(workerTaskEntity);
+            }
+            catch (Exception)
+            {
+                break;
+            }
         }
 
         return new OkResult();
@@ -50,21 +58,47 @@ public class CrackHashManager
 
     private async Task SendTaskToWorker(CrackHashWorkerTaskEntity entity)
     {
-        await _crackHashService.AddOrUpdateWorkerRequestProcessingStatus(entity);
-            
-        Console.WriteLine($"Sends message with guid {entity.RequestId} to {entity.WorkerId}-worker via RabbitMq: {_bus.Address}");
-        await _bus.Publish<ISendWorkerTask>(new
+        await _crackHashService.AddOrUpdateWorkerTask(entity);
+        try
         {
-            RequestId = entity.RequestId,
-            PartNumber = entity.WorkerId,
-            PartCount = int.Parse(Environment.GetEnvironmentVariable("WORKERS_NUMBER")!),
-            Hash = entity.Hash,
-            MaxLength = entity.MaxLength,
-            Alphabet = new Alphabet(Environment.GetEnvironmentVariable("CRACK_HASH_ALPHABET")!.ToCharArray())
-        });
+            await PublishWorkerTask(entity);
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine("Message publish failed. Too many attempts to publish message to RabbitMQ.");
+            await _crackHashService.AddOrUpdateRequestInfo(new CrackHashRequestResultEntity
+            {
+                RequestId = entity.RequestId,
+                Status = RequestProcessingStatus.Error,
+                Data = new List<string>()
+            });
+            
+            throw;
+        }
         
         SetWorkerRequestProcessingTimeout(entity);
     }
+
+    private async Task PublishWorkerTask(CrackHashWorkerTaskEntity entity)
+    {
+        await RetryHelper.RetryOnExceptionAsync(
+            int.Parse(Environment.GetEnvironmentVariable("REPUBLISH_MESSAGE_DELAY_SECONDS")!),
+            TimeSpan.FromSeconds(int.Parse(Environment.GetEnvironmentVariable("REPUBLISH_MESSAGE_MAX_ATTEMPTS")!)),
+            async () =>
+            {
+                Console.WriteLine($"Sends message with guid {entity.RequestId} to {entity.WorkerId}-worker via RabbitMq: {_bus.Address}");
+                await _bus.Publish<ISendWorkerTask>(new
+                {
+                    RequestId = entity.RequestId,
+                    PartNumber = entity.WorkerId,
+                    PartCount = int.Parse(Environment.GetEnvironmentVariable("WORKERS_NUMBER")!),
+                    Hash = entity.Hash,
+                    MaxLength = entity.MaxLength,
+                    Alphabet = new Alphabet(Environment.GetEnvironmentVariable("CRACK_HASH_ALPHABET")!.ToCharArray())
+                });
+            });
+    }
+
     public async Task AddCrackedHashWords(CrackHashWorkerResponseDto workerResponse)
     {
         var clientRequestId = workerResponse.RequestId;
@@ -80,7 +114,7 @@ public class CrackHashManager
 
     public async Task UpdateClientRequestStatus(string clientRequestId)
     {
-        var workerRequestProcessingStatusEntities = await _crackHashService.GetWorkerRequestProcessingStatusesByRequestId(clientRequestId);
+        var workerRequestProcessingStatusEntities = await _crackHashService.GetWorkerTasksByRequestId(clientRequestId);
         var clientRequestWorkerStatuses = workerRequestProcessingStatusEntities
             .Select(e => e.Status)
             .ToList();
@@ -123,31 +157,33 @@ public class CrackHashManager
 
     private async Task SetWorkerClientTaskProcessingStatus(CrackHashWorkerTaskEntity entity)
     {
-        await _crackHashService.AddOrUpdateWorkerRequestProcessingStatus(entity);
+        await _crackHashService.AddOrUpdateWorkerTask(entity);
     }
 
     private async Task SetClientRequestWords(string requestId, List<string> words)
     {
         await _crackHashService.UpdateRequestData(requestId, words);
     }
-    
+
     private void SetWorkerRequestProcessingTimeout(CrackHashWorkerTaskEntity entity)
     {
-        var millisecondsDelay = (int) TimeSpan.FromSeconds(
+        var millisecondsDelay = (int)TimeSpan.FromSeconds(
             int.Parse(Environment.GetEnvironmentVariable("WORKER_TASK_PROCESSING_TIMEOUT_SEC")!)).TotalMilliseconds;
         Task.Delay(millisecondsDelay).ContinueWith(async _ =>
         {
             var requestId = entity.RequestId;
-            Console.WriteLine($"Delay for {millisecondsDelay} millis with request id: {requestId} completed for worker {entity.WorkerId}");
+            Console.WriteLine(
+                $"Delay for {millisecondsDelay} millis with request id: {requestId} completed for worker {entity.WorkerId}");
             var requestResult = await _crackHashService.GetRequestResultByRequestId(requestId);
             if (requestResult != null && requestResult.Status == RequestProcessingStatus.InProgress)
             {
-                var crackHashResult = await _crackHashService.GetWorkerRequestProcessingStatusesByRequestId(requestId);
+                var crackHashResult = await _crackHashService.GetWorkerTasksByRequestId(requestId);
                 var taskProcessingStatus = crackHashResult
                     .FirstOrDefault(e => e.WorkerId == entity.WorkerId);
                 if (taskProcessingStatus == null || taskProcessingStatus.Status == RequestProcessingStatus.InProgress)
                 {
-                    Console.WriteLine($"Request {requestId} on worker {entity.WorkerId} have not finished. (Rerun worker task)");
+                    Console.WriteLine(
+                        $"Request {requestId} on worker {entity.WorkerId} have not finished. (Rerun worker task)");
                     await SendTaskToWorker(entity);
                 }
                 else
@@ -158,8 +194,9 @@ public class CrackHashManager
             else
             {
                 entity.Status = RequestProcessingStatus.Error;
-                await _crackHashService.AddOrUpdateWorkerRequestProcessingStatus(entity);
-                Console.WriteLine($"Request {requestId} on worker {entity.WorkerId} have finished or failed. (Stop rerun)");
+                await _crackHashService.AddOrUpdateWorkerTask(entity);
+                Console.WriteLine(
+                    $"Request {requestId} on worker {entity.WorkerId} have finished or failed. (Stop rerun)");
             }
         });
     }

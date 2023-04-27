@@ -8,6 +8,6 @@ public record CrackHashRequestResultEntity
 {
     [BsonId]
     public string? RequestId { get; set; }
-    public RequestProcessingStatus Status { get; init; } 
+    public RequestProcessingStatus Status { get; set; } 
     public List<string> Data { get; set; }
 };
