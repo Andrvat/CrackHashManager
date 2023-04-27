@@ -1,4 +1,3 @@
-using DataContracts.Entities;
 using Manager.DataContracts.Entities;
 using MongoDB.Driver;
 
@@ -9,7 +8,8 @@ public class CrackHashDbContext : ICrackHashDbContext
     private readonly IMongoDatabase _db;
 
     public IMongoCollection<CrackHashRequestResultEntity> RequestResults => _db.GetCollection<CrackHashRequestResultEntity>("RequestResults");
-    
+    public IMongoCollection<CrackHashWorkerRequestProcessingStatusEntity> WorkerRequestProcessingStatuses => _db.GetCollection<CrackHashWorkerRequestProcessingStatusEntity>("WorkerRequestProcessingStatuses");
+
     public CrackHashDbContext(IMongoDbConfig config)
     {
         var client = new MongoClient(config.ConnectionString);

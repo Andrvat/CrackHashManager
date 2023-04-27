@@ -1,28 +1,22 @@
-﻿using System.Collections.Concurrent;
-using DataContracts.Dto;
+﻿using DataContracts.Dto;
 using DataContracts.Enum;
 using DataContracts.MassTransit;
-using Manager.Config;
+using Manager.Database;
+using Manager.DataContracts.Entities;
 using MassTransit;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Options;
 
 namespace Manager.Logic;
 
 public class CrackHashManager
 {
-    private ConcurrentDictionary<string, RequestProcessingStatus> ClientRequestProcessingStatuses { get; set; } = new();
-
-    private ConcurrentDictionary<(string ClientRequestId, int WorkerId), RequestProcessingStatus>
-        WorkerClientTaskProcessingStatuses { get; set; } = new();
-
-    private ConcurrentDictionary<string, List<string>> ClientCrackHashWords { get; set; } = new();
-
     private readonly IBus _bus;
+    private readonly ICrackHashService _crackHashService;
 
-    public CrackHashManager(IBus bus)
+    public CrackHashManager(IBus bus, ICrackHashService crackHashService)
     {
         _bus = bus;
+        _crackHashService = crackHashService;
     }
 
     public async Task<IActionResult> SendTasksToWorkers(string requestId, int totalWorkersNumber,
@@ -31,9 +25,25 @@ public class CrackHashManager
         SetClientRequestProcessingStatus(requestId, RequestProcessingStatus.InProgress);
 
         var alphabet = Environment.GetEnvironmentVariable("CRACK_HASH_ALPHABET")!;
+        
+        var requestResultEntity = new CrackHashRequestResultEntity
+        {
+            RequestId = requestId,
+            Status = RequestProcessingStatus.InProgress,
+            Data = new List<string>()
+        };
+        await _crackHashService.AddOrUpdateRequestInfo(requestResultEntity);
 
+        
         for (var i = 1; i <= totalWorkersNumber; i++)
         {
+            await _crackHashService.AddOrUpdateWorkerRequestProcessingStatus(new CrackHashWorkerRequestProcessingStatusEntity
+            {
+                RequestId = requestId,
+                WorkerId = i,
+                Status = RequestProcessingStatus.InProgress
+            });
+            
             Console.WriteLine($"Sends message with guid {requestId} to {i}-worker via RabbitMq: {_bus.Address}");
             await _bus.Publish<ISendWorkerTask>(new
             {
@@ -44,26 +54,29 @@ public class CrackHashManager
                 MaxLength = userDataDto.MaxLength,
                 Alphabet = new Alphabet(alphabet.ToCharArray())
             });
-
-            WorkerClientTaskProcessingStatuses[(requestId, i)] = RequestProcessingStatus.InProgress;
         }
 
         return new OkResult();
     }
 
-    public void AddCrackedHashWords(CrackHashWorkerResponseDto workerResponse)
+    public async Task AddCrackedHashWords(CrackHashWorkerResponseDto workerResponse)
     {
         var clientRequestId = workerResponse.RequestId;
 
-        SetClientRequestWords(clientRequestId, workerResponse.Words.ToList());
-        SetWorkerClientTaskProcessingStatus(clientRequestId, workerResponse.PartNumber, RequestProcessingStatus.Ready);
+        await SetClientRequestWords(clientRequestId, workerResponse.Words.ToList());
+        await SetWorkerClientTaskProcessingStatus(new CrackHashWorkerRequestProcessingStatusEntity
+        {
+            RequestId = clientRequestId,
+            WorkerId = workerResponse.PartNumber,
+            Status = RequestProcessingStatus.Ready
+        });
     }
 
-    public void UpdateClientRequestStatus(string clientRequestId)
+    public async Task UpdateClientRequestStatus(string clientRequestId)
     {
-        var clientRequestWorkerStatuses = WorkerClientTaskProcessingStatuses
-            .Where(r => r.Key.ClientRequestId.Equals(clientRequestId))
-            .Select(r => r.Value)
+        var workerRequestProcessingStatusEntities = await _crackHashService.GetWorkerRequestProcessingStatusesByRequestId(clientRequestId);
+        var clientRequestWorkerStatuses = workerRequestProcessingStatusEntities
+            .Select(e => e.Status)
             .ToList();
 
         var errorStatusCount = clientRequestWorkerStatuses.Count(s => s == RequestProcessingStatus.Error);
@@ -80,43 +93,35 @@ public class CrackHashManager
         }
     }
 
-    public CrackResultDto? GetCrackHashResult(string requestId)
+    public async Task<CrackResultDto?> GetCrackHashResult(string requestId)
     {
-        if (!ClientRequestProcessingStatuses.ContainsKey(requestId))
+        var requestInfo = await _crackHashService.GetRequestResultByRequestId(requestId);
+        if (requestInfo == null)
         {
             return null;
         }
 
-        var clientRequestProcessingResult = ClientRequestProcessingStatuses
-            .FirstOrDefault(r => r.Key.Equals(requestId));
-
         return new CrackResultDto
         {
-            Status = clientRequestProcessingResult.Value,
-            Data = clientRequestProcessingResult.Value == RequestProcessingStatus.Ready
-                ? ClientCrackHashWords[requestId]
+            Status = requestInfo.Status,
+            Data = requestInfo.Status == RequestProcessingStatus.Ready
+                ? requestInfo.Data
                 : null
         };
     }
 
-    public void SetClientRequestProcessingStatus(string requestId, RequestProcessingStatus status)
+    public async void SetClientRequestProcessingStatus(string requestId, RequestProcessingStatus status)
     {
-        ClientRequestProcessingStatuses.AddOrUpdate(requestId, status, (_, _) => status);
+        await _crackHashService.UpdateRequestProcessingStatus(requestId, status);
     }
 
-    private void SetWorkerClientTaskProcessingStatus(string requestId, int workerId, RequestProcessingStatus status)
+    private async Task SetWorkerClientTaskProcessingStatus(CrackHashWorkerRequestProcessingStatusEntity entity)
     {
-        WorkerClientTaskProcessingStatuses.AddOrUpdate((requestId, workerId), status, (_, _) => status);
+        await _crackHashService.AddOrUpdateWorkerRequestProcessingStatus(entity);
     }
 
-    private void SetClientRequestWords(string requestId, List<string> words)
+    private async Task SetClientRequestWords(string requestId, List<string> words)
     {
-        var success = ClientCrackHashWords.TryAdd(requestId, words);
-        if (!success)
-        {
-            ClientCrackHashWords.TryRemove(requestId, out var currentWords);
-            currentWords!.AddRange(words);
-            ClientCrackHashWords.TryAdd(requestId, currentWords);
-        }
+        await _crackHashService.UpdateRequestData(requestId, words);
     }
 }
