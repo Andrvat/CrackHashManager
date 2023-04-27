@@ -2,11 +2,16 @@ using DataContracts.Dto;
 using DataContracts.MassTransit;
 using Manager.Config;
 using Manager.Consumers;
+using Manager.Database;
 using Manager.Logic;
 using MassTransit;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.Configure<AppSettings>(builder.Configuration.GetSection(nameof(AppSettings)));
+
+builder.Services.AddScoped<ICrackHashDbContext, CrackHashDbContext>();
+builder.Services.AddSingleton<IMongoDbConfig, MongoDbConfig>();
+builder.Services.AddSingleton<ICrackHashService, CrackHashService>();
 
 builder.Services.AddSingleton<CrackHashManager>();
 builder.Services.AddScoped<TaskFinishedConsumer>();
