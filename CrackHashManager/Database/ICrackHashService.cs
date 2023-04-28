@@ -11,4 +11,5 @@ public interface ICrackHashService
     Task UpdateRequestData(string requestId, List<string> data);
     Task AddOrUpdateWorkerTask(CrackHashWorkerTaskEntity entity);
     Task<List<CrackHashWorkerTaskEntity>> GetWorkerTasksByRequestId(string requestId);
+    Task<List<CrackHashWorkerTaskEntity>> GetUnpublishedWorkerTasks();
 }

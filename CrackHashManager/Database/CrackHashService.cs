@@ -81,7 +81,8 @@ public class CrackHashService : ICrackHashService
         var updateDefinition = Builders<CrackHashWorkerTaskEntity>.Update
             .Set(e => e.Status, entity.Status)
             .Set(e => e.Hash, entity.Hash)
-            .Set(e => e.MaxLength, entity.MaxLength);
+            .Set(e => e.MaxLength, entity.MaxLength)
+            .Set(e => e.IsPublished, entity.IsPublished);
         var options = new UpdateOptions
         {
             IsUpsert = true
@@ -93,6 +94,13 @@ public class CrackHashService : ICrackHashService
     public async Task<List<CrackHashWorkerTaskEntity>> GetWorkerTasksByRequestId(string requestId)
     {
         var filterDefinition = Builders<CrackHashWorkerTaskEntity>.Filter.Eq(e => e.RequestId, requestId);
+        var result = await _dbContext.WorkerTasks.FindAsync(filterDefinition);
+        return result.ToList();
+    }
+
+    public async Task<List<CrackHashWorkerTaskEntity>> GetUnpublishedWorkerTasks()
+    {
+        var filterDefinition = Builders<CrackHashWorkerTaskEntity>.Filter.Eq(e => e.IsPublished, false);
         var result = await _dbContext.WorkerTasks.FindAsync(filterDefinition);
         return result.ToList();
     }

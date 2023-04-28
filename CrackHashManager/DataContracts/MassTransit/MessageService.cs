@@ -18,4 +18,9 @@ public class MessageService<T>
         var message = _messages.Take(); 
         return message;
     }
+
+    public bool ContainsUnreadMessages()
+    {
+        return _messages.Count > 0;
+    }
 }

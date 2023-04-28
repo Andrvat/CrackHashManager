@@ -10,14 +10,10 @@ namespace Manager.Controllers;
 public class CrackHashManagerController : ControllerBase
 {
     private readonly CrackHashManager _crackHashManager;
-    private readonly MessageService<CrackHashWorkerResponseDto> _messageService;
 
-    public CrackHashManagerController(
-        CrackHashManager crackHashManager,
-        MessageService<CrackHashWorkerResponseDto> messageService)
+    public CrackHashManagerController(CrackHashManager crackHashManager)
     {
         _crackHashManager = crackHashManager;
-        _messageService = messageService;
     }
 
     [HttpPost("/api/hash/crack")]
@@ -45,19 +41,6 @@ public class CrackHashManagerController : ControllerBase
         return result;
     }
 
-    [HttpPatch("/internal/api/manager/hash/crack/request")]
-    public async Task<IActionResult> AddCrackedHashWords()
-    {
-        Console.WriteLine($"Handle response from worker by path: {Request.Path}");
-
-        var workerResponse = _messageService.GetMessage();
-        Console.WriteLine($"Get worker response {workerResponse}");
-
-        await _crackHashManager.AddCrackedHashWords(workerResponse);
-        await _crackHashManager.UpdateClientRequestStatus(workerResponse.RequestId);
-        return Ok();
-    }
-
     private void SetRequestProcessingTimeout(RequestInfoDto requestInfo)
     {
         var millisecondsDelay = (int) TimeSpan.FromSeconds(
@@ -69,7 +52,7 @@ public class CrackHashManagerController : ControllerBase
             var crackHashResult = await _crackHashManager.GetCrackHashResult(requestId);
             if (crackHashResult == null || crackHashResult.Status != RequestProcessingStatus.Ready)
             {
-                Console.WriteLine($"Request {requestId} have not finished. Set status Error");
+                Console.WriteLine($"Request {requestId} have not finished. Set status Error. (Timeout)");
                 _crackHashManager.SetClientRequestProcessingStatus(requestId, RequestProcessingStatus.Error);
             }
         });

@@ -13,5 +13,6 @@ public record CrackHashWorkerTaskEntity
     public int WorkerId { get; set; }
     public string Hash { get; set; }
     public int MaxLength { get; set; }
-    public RequestProcessingStatus Status { get; set; } 
+    public RequestProcessingStatus Status { get; set; }
+    public bool IsPublished { get; set; }
 }
